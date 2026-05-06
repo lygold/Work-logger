@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Work Log</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --border: #2e2e2e;
+    --accent: #e8c547;
+    --accent2: #e87447;
+    --text: #f0f0f0;
+    --muted: #666;
+    --success: #47e8a0;
+    --danger: #e84747;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    padding: 0 0 80px 0;
+  }
+
+  header {
+    padding: 20px 16px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+  }
+
+  header h1 {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  .date-display {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky;
+    top: 57px;
+    z-index: 9;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 12px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .view { display: none; padding: 16px; }
+  .view.active { display: block; }
+
+  /* LOG ENTRY FORM */
+  .field-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+    margin-top: 16px;
+  }
+
+  .field-label:first-child { margin-top: 0; }
+
+  .category-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .cat-btn {
+    padding: 10px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+
+  .cat-btn.selected {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(232,197,71,0.08);
+  }
+
+  textarea, input[type="text"], input[type="number"] {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+    resize: none;
+  }
+
+  textarea:focus, input:focus {
+    border-color: var(--accent);
+  }
+
+  .time-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .interrupted-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    cursor: pointer;
+  }
+
+  .toggle {
+    width: 36px;
+    height: 20px;
+    background: var(--border);
+    border-radius: 10px;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+
+  .toggle.on { background: var(--accent2); }
+
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background: white;
+    border-radius: 50%;
+    top: 3px;
+    left: 3px;
+    transition: left 0.2s;
+  }
+
+  .toggle.on::after { left: 19px; }
+
+  .toggle-label {
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  .interrupt-source {
+    margin-top: 8px;
+  }
+
+  .submit-btn {
+    width: 100%;
+    margin-top: 20px;
+    padding: 14px;
+    background: var(--accent);
+    color: #0f0f0f;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+    transition: opacity 0.15s;
+  }
+
+  .submit-btn:active { opacity: 0.85; }
+
+  /* LOG LIST */
+  .log-entry {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+    position: relative;
+  }
+
+  .log-entry-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 6px;
+  }
+
+  .log-cat {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 4px;
+    background: rgba(232,197,71,0.12);
+    color: var(--accent);
+  }
+
+  .log-cat.accounting { background: rgba(71,232,160,0.12); color: var(--success); }
+  .log-cat.recruiting { background: rgba(232,116,71,0.12); color: var(--accent2); }
+  .log-cat.operations { background: rgba(71,130,232,0.12); color: #7ab3f5; }
+  .log-cat.projects { background: rgba(180,71,232,0.12); color: #c47af5; }
+  .log-cat.admin { background: rgba(232,71,71,0.12); color: var(--danger); }
+  .log-cat.interrupted { background: rgba(232,71,71,0.12); color: var(--danger); }
+
+  .log-time {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .log-task {
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 4px;
+    line-height: 1.4;
+  }
+
+  .log-meta {
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .log-meta span { display: flex; align-items: center; gap: 3px; }
+
+  .interrupted-badge {
+    color: var(--accent2);
+    font-size: 10px;
+    font-weight: 600;
+  }
+
+  .delete-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px 6px;
+    opacity: 0.4;
+  }
+  .delete-btn:hover { opacity: 1; color: var(--danger); }
+
+  .day-header {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 16px 0 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  /* REPORT */
+  .report-section {
+    margin-bottom: 20px;
+  }
+
+  .report-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+  }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 4px;
+  }
+
+  .stat-label {
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  .stat-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .bar-wrap {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-top: 4px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+    transition: width 0.3s;
+  }
+
+  .interrupt-stat {
+    background: rgba(232,116,71,0.08);
+    border-color: rgba(232,116,71,0.2);
+  }
+
+  .copy-btn {
+    width: 100%;
+    margin-top: 16px;
+    padding: 12px;
+    background: var(--surface2);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+  }
+
+  .week-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .week-nav {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  .week-label {
+    flex: 1;
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .flash {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--success);
+    color: #0f0f0f;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    z-index: 100;
+  }
+  .flash.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Work Log</h1>
+  <div class="date-display" id="headerDate"></div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('log')">Log</div>
+  <div class="tab" onclick="switchTab('history')">History</div>
+  <div class="tab" onclick="switchTab('report')">Report</div>
+</div>
+
+<div id="view-log" class="view active">
+  <div class="field-label">Category</div>
+  <div class="category-grid">
+    <div class="cat-btn" onclick="selectCat(this,'accounting')">💰 Accounting</div>
+    <div class="cat-btn" onclick="selectCat(this,'recruiting')">🎯 Recruiting</div>
+    <div class="cat-btn" onclick="selectCat(this,'operations')">⚙️ Operations</div>
+    <div class="cat-btn" onclick="selectCat(this,'projects')">🛠 Projects</div>
+    <div class="cat-btn" onclick="selectCat(this,'admin')">📋 Admin</div>
+    <div class="cat-btn" onclick="selectCat(this,'other')">📌 Other</div>
+  </div>
+
+  <div class="field-label">Task description</div>
+  <textarea id="taskDesc" rows="2" placeholder="What did you do?"></textarea>
+
+  <div class="field-label">Time spent</div>
+  <div class="time-row">
+    <input type="number" id="timeHours" placeholder="Hours" min="0" max="12">
+    <input type="number" id="timeMins" placeholder="Minutes" min="0" max="59" step="15">
+  </div>
+
+  <div class="field-label">Interrupted?</div>
+  <div class="interrupted-row" onclick="toggleInterrupt()">
+    <div class="toggle" id="interruptToggle"></div>
+    <div class="toggle-label">Was this interrupted?</div>
+  </div>
+  <div class="interrupt-source" id="interruptSource" style="display:none; margin-top:8px;">
+    <input type="text" id="interruptBy" placeholder="Who / what interrupted you?">
+  </div>
+
+  <button class="submit-btn" onclick="submitEntry()">Log Entry</button>
+</div>
+
+<div id="view-history" class="view">
+  <div id="historyList"></div>
+</div>
+
+<div id="view-report" class="view">
+  <div class="week-selector">
+    <button class="week-nav" onclick="changeWeek(-1)">←</button>
+    <div class="week-label" id="weekLabel"></div>
+    <button class="week-nav" onclick="changeWeek(1)">→</button>
+  </div>
+  <div id="reportContent"></div>
+</div>
+
+<div class="flash" id="flash">Logged ✓</div>
+
+<script>
+  const CATS = {
+    accounting: 'Accounting',
+    recruiting: 'Recruiting',
+    operations: 'Operations',
+    projects: 'Projects',
+    admin: 'Admin',
+    other: 'Other'
+  };
+
+  let selectedCat = null;
+  let interrupted = false;
+  let currentWeekOffset = 0;
+
+  function updateHeaderDate() {
+    const now = new Date();
+    document.getElementById('headerDate').textContent =
+      now.toLocaleDateString('en-IL', { weekday: 'short', day: 'numeric', month: 'short' });
+  }
+  updateHeaderDate();
+
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', ['log','history','report'][i] === name);
+    });
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+    if (name === 'history') renderHistory();
+    if (name === 'report') renderReport();
+  }
+
+  function selectCat(el, cat) {
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedCat = cat;
+  }
+
+  function toggleInterrupt() {
+    interrupted = !interrupted;
+    document.getElementById('interruptToggle').classList.toggle('on', interrupted);
+    document.getElementById('interruptSource').style.display = interrupted ? 'block' : 'none';
+    if (!interrupted) document.getElementById('interruptBy').value = '';
+  }
+
+  function getEntries() {
+    return JSON.parse(localStorage.getItem('worklog_entries') || '[]');
+  }
+
+  function saveEntries(entries) {
+    localStorage.setItem('worklog_entries', JSON.stringify(entries));
+  }
+
+  function submitEntry() {
+    const desc = document.getElementById('taskDesc').value.trim();
+    const hours = parseInt(document.getElementById('timeHours').value) || 0;
+    const mins = parseInt(document.getElementById('timeMins').value) || 0;
+    const interruptBy = document.getElementById('interruptBy').value.trim();
+
+    if (!selectedCat) return alert('Please select a category');
+    if (!desc) return alert('Please describe the task');
+    if (hours === 0 && mins === 0) return alert('Please enter time spent');
+
+    const entry = {
+      id: Date.now(),
+      timestamp: new Date().toISOString(),
+      category: selectedCat,
+      task: desc,
+      hours,
+      mins,
+      interrupted,
+      interruptBy: interrupted ? interruptBy : ''
+    };
+
+    const entries = getEntries();
+    entries.unshift(entry);
+    saveEntries(entries);
+
+    // Reset
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('taskDesc').value = '';
+    document.getElementById('timeHours').value = '';
+    document.getElementById('timeMins').value = '';
+    if (interrupted) toggleInterrupt();
+    selectedCat = null;
+
+    showFlash();
+  }
+
+  function showFlash() {
+    const f = document.getElementById('flash');
+    f.classList.add('show');
+    setTimeout(() => f.classList.remove('show'), 1500);
+  }
+
+  function deleteEntry(id) {
+    const entries = getEntries().filter(e => e.id !== id);
+    saveEntries(entries);
+    renderHistory();
+  }
+
+  function formatTime(h, m) {
+    if (h === 0) return m + 'm';
+    if (m === 0) return h + 'h';
+    return h + 'h ' + m + 'm';
+  }
+
+  function totalMins(entries) {
+    return entries.reduce((sum, e) => sum + e.hours * 60 + e.mins, 0);
+  }
+
+  function renderHistory() {
+    const entries = getEntries();
+    const container = document.getElementById('historyList');
+
+    if (entries.length === 0) {
+      container.innerHTML = '<div class="empty-state">No entries yet.<br>Start logging your work.</div>';
+      return;
+    }
+
+    // Group by date
+    const groups = {};
+    entries.forEach(e => {
+      const d = new Date(e.timestamp).toLocaleDateString('en-IL', { weekday: 'long', day: 'numeric', month: 'short' });
+      if (!groups[d]) groups[d] = [];
+      groups[d].push(e);
+    });
+
+    container.innerHTML = Object.entries(groups).map(([date, items]) => `
+      <div class="day-header">${date} — ${formatTime(0, totalMins(items))}</div>
+      ${items.map(e => `
+        <div class="log-entry">
+          <button class="delete-btn" onclick="deleteEntry(${e.id})">×</button>
+          <div class="log-entry-top">
+            <span class="log-cat ${e.category}">${CATS[e.category]}</span>
+            <span class="log-time">${new Date(e.timestamp).toLocaleTimeString('en-IL', {hour:'2-digit',minute:'2-digit'})}</span>
+          </div>
+          <div class="log-task">${e.task}</div>
+          <div class="log-meta">
+            <span>⏱ ${formatTime(e.hours, e.mins)}</span>
+            ${e.interrupted ? `<span class="interrupted-badge">⚡ Interrupted${e.interruptBy ? ' by ' + e.interruptBy : ''}</span>` : ''}
+          </div>
+        </div>
+      `).join('')}
+    `).join('');
+  }
+
+  function getWeekRange(offset) {
+    const now = new Date();
+    const day = now.getDay();
+    const sunday = new Date(now);
+    sunday.setDate(now.getDate() - day + (offset * 7));
+    sunday.setHours(0, 0, 0, 0);
+    const saturday = new Date(sunday);
+    saturday.setDate(sunday.getDate() + 6);
+    saturday.setHours(23, 59, 59, 999);
+    return { start: sunday, end: saturday };
+  }
+
+  function changeWeek(dir) {
+    currentWeekOffset += dir;
+    renderReport();
+  }
+
+  function renderReport() {
+    const { start, end } = getWeekRange(currentWeekOffset);
+    const label = start.toLocaleDateString('en-IL', { day: 'numeric', month: 'short' }) +
+      ' – ' + end.toLocaleDateString('en-IL', { day: 'numeric', month: 'short', year: 'numeric' });
+    document.getElementById('weekLabel').textContent = label;
+
+    const entries = getEntries().filter(e => {
+      const t = new Date(e.timestamp);
+      return t >= start && t <= end;
+    });
+
+    const container = document.getElementById('reportContent');
+
+    if (entries.length === 0) {
+      container.innerHTML = '<div class="empty-state">No entries this week.</div>';
+      return;
+    }
+
+    // By category
+    const byCat = {};
+    Object.keys(CATS).forEach(c => byCat[c] = []);
+    entries.forEach(e => byCat[e.category].push(e));
+
+    const totalM = totalMins(entries);
+    const interruptedEntries = entries.filter(e => e.interrupted);
+    const interruptMins = totalMins(interruptedEntries);
+
+    // Interruption sources
+    const sources = {};
+    interruptedEntries.forEach(e => {
+      const s = e.interruptBy || 'Unknown';
+      sources[s] = (sources[s] || 0) + 1;
+    });
+
+    const catRows = Object.entries(byCat)
+      .filter(([, items]) => items.length > 0)
+      .sort((a, b) => totalMins(b[1]) - totalMins(a[1]))
+      .map(([cat, items]) => {
+        const m = totalMins(items);
+        const pct = Math.round(m / totalM * 100);
+        return `
+          <div class="stat-row">
+            <div>
+              <div class="stat-label">${CATS[cat]}</div>
+              <div class="bar-wrap" style="width:120px">
+                <div class="bar-fill" style="width:${pct}%"></div>
+              </div>
+            </div>
+            <div style="text-align:right">
+              <div class="stat-value">${formatTime(Math.floor(m/60), m%60)}</div>
+              <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">${pct}%</div>
+            </div>
+          </div>`;
+      }).join('');
+
+    const sourceRows = Object.entries(sources)
+      .sort((a, b) => b[1] - a[1])
+      .map(([s, count]) => `
+        <div class="stat-row interrupt-stat">
+          <div class="stat-label">${s}</div>
+          <div class="stat-value">${count}×</div>
+        </div>`).join('');
+
+    container.innerHTML = `
+      <div class="report-section">
+        <div class="report-title">Summary</div>
+        <div class="stat-row">
+          <div class="stat-label">Total logged</div>
+          <div class="stat-value">${formatTime(Math.floor(totalM/60), totalM%60)}</div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-label">Entries</div>
+          <div class="stat-value">${entries.length}</div>
+        </div>
+        <div class="stat-row interrupt-stat">
+          <div class="stat-label">Interrupted tasks</div>
+          <div class="stat-value">${interruptedEntries.length} (${formatTime(Math.floor(interruptMins/60), interruptMins%60)})</div>
+        </div>
+      </div>
+
+      <div class="report-section">
+        <div class="report-title">By Category</div>
+        ${catRows}
+      </div>
+
+      ${sourceRows ? `
+      <div class="report-section">
+        <div class="report-title">Interruption Sources</div>
+        ${sourceRows}
+      </div>` : ''}
+
+      <button class="copy-btn" onclick="copyReport()">Copy Report as Text</button>
+    `;
+  }
+
+  function copyReport() {
+    const { start, end } = getWeekRange(currentWeekOffset);
+    const entries = getEntries().filter(e => {
+      const t = new Date(e.timestamp);
+      return t >= start && t <= end;
+    });
+
+    const totalM = totalMins(entries);
+    const byCat = {};
+    Object.keys(CATS).forEach(c => byCat[c] = []);
+    entries.forEach(e => byCat[e.category].push(e));
+
+    const interrupted = entries.filter(e => e.interrupted);
+    const sources = {};
+    interrupted.forEach(e => {
+      const s = e.interruptBy || 'Unknown';
+      sources[s] = (sources[s] || 0) + 1;
+    });
+
+    const label = start.toLocaleDateString('en-IL', { day: 'numeric', month: 'short' }) +
+      ' – ' + end.toLocaleDateString('en-IL', { day: 'numeric', month: 'short', year: 'numeric' });
+
+    let text = `WORK LOG REPORT — ${label}\n`;
+    text += `${'='.repeat(40)}\n\n`;
+    text += `Total logged: ${formatTime(Math.floor(totalM/60), totalM%60)}\n`;
+    text += `Total entries: ${entries.length}\n`;
+    text += `Interrupted tasks: ${interrupted.length}\n\n`;
+
+    text += `BY CATEGORY\n${'-'.repeat(30)}\n`;
+    Object.entries(byCat)
+      .filter(([, items]) => items.length > 0)
+      .sort((a, b) => totalMins(b[1]) - totalMins(a[1]))
+      .forEach(([cat, items]) => {
+        const m = totalMins(items);
+        const pct = Math.round(m / totalM * 100);
+        text += `${CATS[cat].padEnd(14)} ${formatTime(Math.floor(m/60), m%60).padEnd(8)} (${pct}%)\n`;
+      });
+
+    if (Object.keys(sources).length > 0) {
+      text += `\nINTERRUPTION SOURCES\n${'-'.repeat(30)}\n`;
+      Object.entries(sources).sort((a,b) => b[1]-a[1]).forEach(([s, c]) => {
+        text += `${s}: ${c}×\n`;
+      });
+    }
+
+    text += `\nDETAILED LOG\n${'-'.repeat(30)}\n`;
+    entries.forEach(e => {
+      const d = new Date(e.timestamp).toLocaleDateString('en-IL', { weekday: 'short', day: 'numeric', month: 'short' });
+      const t = new Date(e.timestamp).toLocaleTimeString('en-IL', { hour: '2-digit', minute: '2-digit' });
+      text += `[${d} ${t}] ${CATS[e.category]} — ${formatTime(e.hours, e.mins)}\n`;
+      text += `  ${e.task}\n`;
+      if (e.interrupted) text += `  ⚡ Interrupted${e.interruptBy ? ' by: ' + e.interruptBy : ''}\n`;
+    });
+
+    navigator.clipboard.writeText(text).then(() => showFlash());
+  }
+</script>
+</body>
+</html>
